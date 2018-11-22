@@ -3,51 +3,40 @@ using Android.OS;
 using Android.Support.V7.App;
 using Android.Runtime;
 using Android.Widget;
-using SQLite;
 using System.IO;
 
 namespace App1
 {
     [Activity(Label = "@string/app_name", Theme = "@style/AppTheme", MainLauncher = true)]
-    public class MainActivity : AppCompatActivity
+    public partial class MainActivity : AppCompatActivity
     {
         protected override void OnCreate(Bundle savedInstanceState)
         {
             base.OnCreate(savedInstanceState);
             // Set our view from the "main" layout resource
             SetContentView(Resource.Layout.activity_main);
+            var stockListView = FindViewById<ListView>(Resource.Id.listView1);
+            var addStockEditText = FindViewById<EditText>(Resource.Id.editText1);
+            var addButton = FindViewById<Button>(Resource.Id.button1);
 
-            string dbPath = Path.Combine(System.Environment.GetFolderPath(System.Environment.SpecialFolder.Personal), "myDb.db3");
-
-            SQLiteConnection db = new SQLiteConnection(dbPath);
-            db.CreateTable<Stock>();
-
-            if (db.Table<Stock>().Count() == 0)
+            var databaseService = new DatabaseService();
+            databaseService.CreateDatabase();
+            databaseService.CreateTableWithData();
+            var stocks = databaseService.GetAllStocks();
+            stockListView.Adapter = new CustomAdapter(this, stocks.ToList());
+            stockListView.ItemClick += (object sender, ItemClickEventArgs e) =>
             {
-                Stock newStock = new Stock();
-                newStock.Symbol = "Audi";
-                db.Insert(newStock);
-                newStock.Symbol = "BMW";
-                db.Insert(newStock);
-                newStock.Symbol = "Lexus";
-                db.Insert(newStock);
-                newStock.Symbol = "Tesla";
-                db.Insert(newStock);
-            }
 
-            var table = db.Table<Stock>();
-            foreach (Stock item in table)
+            };
+
+            addButton.Click += delegate
             {
-                System.Diagnostics.Debug.WriteLine(item.Id + " " + item.Symbol);
-            }
-        }
+                var stockName = addStockEditText.Text;
+                databaseService.AddStock(stockName);
 
-        public class Stock
-        {
-            [PrimaryKey, AutoIncrement, Column("_id")]
-            public int Id { get; set; }
-            [MaxLength(8)]
-            public string Symbol { get; set; }
+                stocks = databaseService.GetAllStocks();
+                stockListView.Adapter = new CustomAdapter(this, stocks.ToList());
+            };
         }
     }
 }
